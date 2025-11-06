@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { 
+  font-family: theme('fontFamily.body'); 
+}
+
+@layer components {
+  .btn-gold {
+    @apply bg-gold text-black font-semibold px-4 py-2 rounded-lg hover:bg-yellow-400 transition duration-300;
+  }
+  
+  .btn-gold-outline {
+    @apply bg-transparent border-2 border-gold hover:bg-gold hover:text-black text-gold font-semibold px-4 py-2 rounded-lg transition duration-300;
+  }
+}
+
+/* Custom toast styles for luxury theme */
+[data-sonner-toast] {
+  border-radius: 12px !important;
+  font-family: 'Poppins', sans-serif !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+  border: 1px solid #d4af37 !important;
+  color: #ffffff !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+  border: 1px solid #ef4444 !important;
+  color: #ffffff !important;
+}
+
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

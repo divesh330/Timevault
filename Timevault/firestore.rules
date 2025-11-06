@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user profiles (for seller info, ratings, etc.)
+      allow read: if true;
+      
+      // Users can only create their own profile during registration
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      
+      // Users can only update their own profile
+      // Cannot change role (only admin can do that)
+      allow update: if isOwner(userId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'id']));
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Watches collection
+    match /watches/{watchId} {
+      // Anyone can read active watches
+      allow read: if resource.data.status == 'active' || 
+                     isOwner(resource.data.sellerId) ||
+                     isAdmin();
+      
+      // Authenticated users can create watches
+      // Must set themselves as seller
+      allow create: if isSignedIn() && 
+                       request.resource.data.sellerId == request.auth.uid &&
+                       request.resource.data.status == 'active' &&
+                       request.resource.data.serialNumber is string &&
+                       request.resource.data.brand in ['Rolex', 'Omega', 'Seiko', 'Casio'];
+      
+      // Only the seller can update their own watch
+      // Cannot change sellerId or createdAt
+      allow update: if isOwner(resource.data.sellerId) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sellerId', 'createdAt', 'serialNumber']);
+      
+      // Only the seller can delete (soft delete) their watch
+      allow delete: if isOwner(resource.data.sellerId) || isAdmin();
+    }
+    
+    // Transactions collection
+    match /transactions/{transactionId} {
+      // Only buyer, seller, or admin can read transaction
+      allow read: if isSignedIn() && 
+                     (request.auth.uid == resource.data.buyerId ||
+                      request.auth.uid == resource.data.sellerId ||
+                      isAdmin());
+      
+      // Authenticated users can create transactions
+      // Must set themselves as buyer
+      allow create: if isSignedIn() && 
+                       request.resource.data.buyerId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      
+      // Only seller can update transaction status
+      // Cannot change buyerId, sellerId, watchId, price, or createdAt
+      allow update: if isSignedIn() &&
+                       request.auth.uid == resource.data.sellerId &&
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['buyerId', 'sellerId', 'watchId', 'price', 'createdAt']);
+      
+      // No one can delete transactions (for audit trail)
+      allow delete: if false;
+    }
+  }
+}
